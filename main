@@ -1,0 +1,352 @@
+---
+title: "Variable Association"
+author: "Emanuel A. Birru"
+date: "Last updated: `r format(Sys.time(), '%d %B, %Y')`"
+output:
+  beamer_presentation:
+    highlight: haddock
+  slidy_presentation:
+    font_adjustment: 0
+    highlight: haddock
+    mathjax: default
+    df_print: paged
+subtitle: Data Analytics 
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(
+	fig.align = "center",
+	message = FALSE,
+	warning = FALSE
+)
+# Packages loaded in this chunk will not appear in the presentation. 
+library("knitr")
+library(readr) # Useful for importing data
+library(dplyr) # Useful in efficiently manipulating datasets
+library(foreign) # Useful for importing SPSS, SAS, STATA etc. data files
+library(rvest) # Useful for scraping HTML data
+library(knitr) # Useful for creating nice tables
+library(openxlsx) # Useful for Read, Write and Edit xlsx Files
+library(readxl) # Useful in reading excel files 
+library(gdata) # Useful for data manipulation
+library(magrittr) #Useful for chaining commands 
+library(ggplot2) # Useful for making plots
+library(RColorBrewer) #Useful for make colorful plots
+library(Hmisc) # Useful in dealing with missing values
+```
+
+
+# Introduction
+
+
+- There are various types of data such as nominal, categorical, continuous and discreet. 
+- We are surrounded by all this data types especially categorical data.
+- In this presentation I would like show association between categorical variable.
+- Hence, Chi-square test of association will be implemented to Hypothesis testing.   
+
+
+
+# Problem Statement
+
+
+
+- Is there an association between exposure to irradiation, tumor size, and menopause and recurrence of breast cancer?
+- Using Chi-square test association we will investigate the between these attributes and recurrence of breast cancer.
+
+# Data
+
+- The data is retrieved form UCI Machine Learning Repository. 
+- The data was collected directly from the website of the repository. 
+- It can be accessed from https://archive.ics.uci.edu/ml/machine-learning-databases.
+```{r}
+df <- "https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer/breast-cancer.data"
+
+bc_df <- read.delim(df, header = TRUE, sep=",")
+
+names(bc_df) <- c("Class", "age_group", "menopause", "tumor_size", "inv-nodes", "node_caps", "deg_malig", "breast", "breast_quad", "irradiat")
+
+bc_df$deg_malig <- as.character(bc_df$deg_malig)
+
+bc_df$Class <- as.factor(bc_df$Class)
+bc_df$irradiat <- as.factor(bc_df$irradiat)
+bc_df$tumor_size <- as.factor(bc_df$tumor_size)
+bc_df$menopause <- as.factor(bc_df$menopause)
+bc_df$node_caps <- as.factor(bc_df$node_caps)
+bc_df$breast_quad <- as.factor(bc_df$breast_quad)
+
+bc_df$Class %>% table() %>% prop.table()
+```
+
+# Data Cont.
+
+- The data set has multivariate characteristics.
+- The attributes has categorical characteristics. 
+- It has 289 instances and 9 attributes.
+- It was saved as a .dat file with no column head.
+- The column head was assigned while loading the data set.
+
+```{r}
+str(bc_df) 
+```
+
+# Descriptive Statistics and Visualisation
+
+- "Class", "irradiat", "tumor_size" and "menopause" are considered as important attributes in this presentation.
+- Class is treated as a factor with 2 levels as "no-recurrence-events" and "recurrence-events".
+- "Use visualisation to highlight interesting features of the data and tell the overall story".
+- "deg_malig" is converted from int to char. 
+- No outliers, and some instance was found with "?" symbol and replced by NA
+- All NA was replaced by mode using imputation
+
+```{r warning=FALSE}
+bc_df$breast_quad[ bc_df$breast_quad == "?" ] <- NA
+bc_df$node_caps[ bc_df$node_caps == "?" ] <- NA
+
+bc_df$node_caps <- impute(bc_df$node_caps, fun = mode)
+bc_df$breast_quad <- impute(bc_df$breast_quad, fun = mode)
+sum(is.na(bc_df))
+```
+
+# Decsriptive Statistics Cont.
+
+- We create tables that associate each attribute of interest with "Class".
+- The data is composed of 70% no recurrence and 30% recurrence events in Class variable.
+- The first one is "irradiat" with "Class" ("irradiat" = exposed to radiation: yes or no)
+
+```{r}
+table(bc_df$irradiat, bc_df$Class) -> table1
+knitr::kable(table1)
+```
+# Decsriptive Statistics Cont.
+
+- We create visual summary to help explain the potential association between the two variables.
+- "irradiat" with "Class"
+```{r}
+table_ir <- table(bc_df$irradiat, bc_df$Class) %>% prop.table(margin = 2)
+barplot(table_ir,ylab="Proportion Within Class",
+        ylim=c(0,1),legend=rownames(table_ir),beside=TRUE,
+        args.legend=c(x = "top",horiz=TRUE,title="irradiate"),
+        xlab="irradiate", col = brewer.pal(5, name = "Reds"))
+```
+
+
+# Decsriptive Statistics Cont.
+
+- The second one is "Tumor size" with "Class": ("Tumor size": size of breast tumors at diagnosis in mm)
+
+```{r}
+table(bc_df$tumor_size, bc_df$Class) -> table2
+knitr::kable(table2)
+```
+# Decsriptive Statistics Cont.
+
+- We create visual summary to help explain the potential association between the two variables.
+- "Tumor size" with "Class"
+```{r}
+table_ts <- table(bc_df$tumor_size, bc_df$Class) %>% prop.table(margin = 2)
+barplot(table_ts,ylab="Proportion Within Class",
+        ylim=c(0,.5),legend=rownames(table_ts),beside=TRUE,
+        args.legend=c(x = "topleft",horiz=TRUE,title="Tumor Size"),
+        xlab="Tumor Size", col = brewer.pal(5, name = "Blues"))
+```
+
+# Decsriptive Statistics Cont.
+
+- The third one is "Menopause" with "Class" ("Menopause": ge40: greater than 40, lt40: less than 40, premono: around menopause)
+
+```{r}
+table(bc_df$menopause, bc_df$Class) -> table4
+knitr::kable(table4)
+```
+
+# Decsriptive Statistics Cont.
+
+- We create visual summary to help explain the potential association between the two variables.
+- "Menopause" with "Class"
+```{r}
+table_mn <- table(bc_df$menopause, bc_df$Class) %>% prop.table(margin = 2)
+barplot(table_mn,ylab="Proportion Within Class",
+        ylim=c(0,.8),legend=rownames(table_mn),beside=TRUE,
+        args.legend=c(x = "topright",horiz=TRUE,title="Menopause"),
+        xlab="Menopause", col = brewer.pal(5, name = "Greens"))
+```
+
+
+# The statistical hypotheses for the Chi-square test of association 
+
+$$H_0: There\ is \ no \ association \ in \ the \ population \ between \ 1.\ "irradiation" \ and \ "class",$$
+$$2.\ "tumore \ "size" \ and \ "Class", \ 3. \ "menopause" and "Class"\ variables \ (independence)$$
+$$H_A: There \ is \ an \ association \ in \ the \ population \ between \ 1.\ "irradiation" \ and \ "class",$$
+$$\ 2.\ "tumore \ "size" \ and \ "Class", \ 3. \ "menopause" and "Class"\ variables \ (dependence) $$
+- Assumption
+
+  - No more than 25% of the cells have expected counts below 5. 
+  
+- Decision Rule
+
+  - Reject $H_0$:
+  
+      - if $p-value$ is less than 0.05 ($\alpha$ significance level)
+      
+- Conclusion 
+
+  - Reject $H_0$:
+  
+    - if test is statistically significant.
+    
+  - Otherwise, the test is not statistically significant.
+
+- We have done the statistical hypotheses for this Chi-square test of association using R
+
+- For "irradiat" "tumor size" and "menopause" attributes and see their association with the recurrence of breast cancer respectively.
+
+
+# Chi-square Test of Association using R for "irradiat"
+```{r}
+chi_ir <- chisq.test(table(bc_df$Class, bc_df$irradiat))
+chi_ir
+```
+
+```{r}
+chi_ir$observed
+```
+
+
+```{r}
+chi_ir$expected
+```
+
+- One-tailed hypothesis test for "Irradiate" using $\alpha$ = 0.05 and $df$ = 1
+```{r}
+qchisq(p = .95,df = 1)
+```
+- The critical value was found to be 9.49. We reject $H_0$ as 9.6374 > 3.841459
+
+- To confirm the $p-value$ computed above, we run the following code
+```{r}
+chi_irr<-chisq.test(table(bc_df$Class, bc_df$irradiat))
+chi_irr$p.value
+```
+
+# Hypothesis testing cont.for "Tumor size"
+```{r warning=FALSE}
+chi_ts <- chisq.test(table(bc_df$Class, bc_df$tumor_size))
+chi_ts
+```
+```{r}
+chi_ts$observed
+```
+
+
+```{r}
+chi_ts$expected
+```
+
+- One-tailed hypothesis test for "Tumor size" using $\alpha$ = 0.05 and $df$ = 10
+```{r}
+qchisq(p = .95,df = 10)
+```
+- The critical value was found to be 18.30. We do not reject $H_0$ as 18.30 =  18.30
+
+- To confirm the $p-value$ computed above, we run the following code
+```{r warning=FALSE}
+chi_tss<-chisq.test(table(bc_df$Class, bc_df$tumor_size))
+chi_tss$p.value
+```
+
+
+# Hypothesis testing cont.for "Menopause"
+```{r warning=FALSE}
+chi_mp <- chisq.test(table(bc_df$Class, bc_df$menopause))
+chi_mp
+```
+```{r}
+chi_mp$observed
+```
+
+```{r}
+chi_ts$expected
+```
+- One-tailed hypothesis test for "Menopause" using $\alpha$ = 0.05 and $df$ = 2
+```{r}
+qchisq(p = .95,df = 2)
+```
+- The critical value was found to be 0.8589. We do not reject $H_0$ as  0.8589 < 5.991465
+
+- To confirm the $p-value$ computed above, we run the following code
+```{r warning=FALSE}
+chi_mps<-chisq.test(table(bc_df$Class, bc_df$menopause))
+chi_mps$p.value
+```
+# Discussion
+
+- From the Chi-square Test of Association using R we get the following results
+
+  - Irradiat: 
+  
+        - 0% of expected cell counts were less than 5.
+        
+        - x-square = 9.6374  and degree of freedom = 1. 
+        
+        - The critical value (3.841459) is is less than the observed value (9.6374).
+        
+        - p-value = 0.001 which is < .05.
+        
+        - Reject the null hypothesis.
+        
+- The results of this study suggest there was a statistically significant association between recurrence of breast cancer and exposure of radiation in women who treated with breast cancer.
+
+  - Tumor size: 
+  
+        - More than 0% of expected cell counts were less than 5,
+        
+        - x-square = 18.3  and degree of freedom  = 10, 
+        
+        - The critical value (18.30) is is equal to the observed value (18.30),
+        
+        - p-value = 0.05 which is = .05,
+        
+        - Can not reject the Null hypothesis (Reject the alternative hypothesis).
+    
+- The results of this study suggest that there is no statistically significant relationship between tumor size and recurrence of cancer in women who treated with breast cancer.    
+
+# Discussion cont.
+
+  - Menopause: 
+  
+        - More than 0% of expected cell counts were less than 5,
+        
+        - x square = 0.8589, and degree of freedom = 2,
+        
+        - The critical value (5.991465) is is greater than the observed value (0.8589),
+        
+        - p-value = 0.65 which is > .05,
+        
+        - Can not reject the Null hypothesis (Reject the alternative hypothesis).
+  
+- The results of this study suggest that there is no statistically significant relationship between menopause and recurrence of cancer in women who treated with breast cancer. 
+
+- A Chi-square test of association was used to test for a statistically significant association between recurrence of breast cancer and exposure of radiation "irradiate", tumor size and menopause separately. The results of the test found a statistically significant association between exposure for radiation "irradiate" and recurrence of breast cancer, $X^2$=18.3, $p$ < .05
+
+# Discussion cont.
+
+- The results of this study suggest that women who treated with breast cancer were more likely to experience recurrence of breast cancer categories when exposed to radiation compared to non-ruccerence.
+
+- The Limitation of this study is the size of the data set.
+
+- The result would be different if the data set were larger.
+
+- We can say that using a statistical method we can predict the possibility of different outcomes and draw a statistical inference.
+
+- Chi square method is a very good tool to be used as a feature selection tool.
+
+# References
+
+- Dua, D. and Graff, C. (2019). UCI Machine Learning Repository [http://archive.ics.uci.edu/ml]. Irvine, CA: University of California, School of Information and Computer Science. 
+
+- Lecture materials by Laleh Tafakori and James Baglin.
+
+- R documentation, R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL http://www.R-project.org/.
+
+- Stack Overflow http://stackoverflow.com/.
